@@ -1,25 +1,34 @@
-import logo from './logo.svg';
+import React, {useState} from 'react'
+
 import './App.css';
+import FileViewer from './lib'
 
 function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+ 	const [files, setFiles] = useState([])
+	const [currentFile, setCurrentFile] = useState()
+
+	return (
+		<div className="App">
+			<div className="input">
+				<input type="file" onChange={e => setFiles(e.target.files)} multiple/>
+
+				{files && files.length && new Array(files.length).fill('').map((a, id) =>
+					<div key={id} onClick={()=>setCurrentFile(id)}>{files[id].name}</div>
+				)}
+
+				{typeof currentFile === "number" &&
+					<FileViewer
+						name={files[currentFile].name}
+						type={files[currentFile].name.split('.')[1]}
+						data={files[currentFile]}
+						hideControls={false}
+						close={() => setCurrentFile()}
+						/>
+				}
+
+			</div>
+		</div>
+	);
 }
 
 export default App;
