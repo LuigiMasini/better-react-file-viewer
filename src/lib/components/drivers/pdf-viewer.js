@@ -1,181 +1,173 @@
-// Copyright (c) 2017 PlanGrid, Inc.
+import { useEffect, useRef, useState} from 'react';
 
-import React from 'react';
-import VisibilitySensor from 'react-visibility-sensor';
-import { PDFJS } from 'pdfjs-dist';
-//import 'pdfjs-dist/web/compatibility';
-import Loading from '../Loading'
+import * as PDFJS from 'pdfjs-dist/build/pdf';
+import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.entry';
+
 import styled from 'styled-components'
+import VisibilitySensor from 'react-visibility-sensor'
+import Loading from '../Loading'
+import Error from '../error'
 
-// PDFJS.disableWorker = true;
+const DEFAULT_SCALE = 1.1
 const INCREASE_PERCENTAGE = 0.2;
-const DEFAULT_SCALE = 1.1;
 
-export class PDFPage extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {};
-    this.onChange = this.onChange.bind(this);
-  }
+PDFJS.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
-  componentDidMount() {
-    if (this.props.disableVisibilityCheck) this.fetchAndRenderPage();
-  }
+function Page ({getPage, containerWidth, zoom, ...props}) {
 
-  componentDidUpdate(prevProps, prevState) {
-    if (this.props.disableVisibilityCheck) {
-      if (prevProps.zoom !== this.props.zoom) this.fetchAndRenderPage();
-      return;
-    }
+	const [loading, setLoading] = useState(true)
+	const [page, setPage] = useState()
+	const [isVisible, setIsVisible] = useState(false)
+	const canvasRef = useRef()
 
-    // we want to render/re-render in two scenarias
-    // user scrolls to the pdf
-    // user zooms in
-    if (prevState.isVisible === this.state.isVisible && prevProps.zoom === this.props.zoom) return;
-    if (this.state.isVisible) this.fetchAndRenderPage();
-  }
 
-  onChange(isVisible) {
-    if (isVisible) this.setState({ isVisible });
-  }
+	useEffect(() => {
 
-  fetchAndRenderPage() {
-    const { pdf, index } = this.props;
-    pdf.getPage(index).then(this.renderPage.bind(this));
-  }
+	}, [])
 
-  renderPage(page) {
-    const { containerWidth, zoom } = this.props;
-    const calculatedScale = (containerWidth / page.getViewport(DEFAULT_SCALE).width);
-    const scale = calculatedScale > DEFAULT_SCALE ? DEFAULT_SCALE : calculatedScale;
-    const viewport = page.getViewport(scale + zoom);
-    const { width, height } = viewport;
+	useEffect(() => {
+		setLoading(true)
+		getPage().then(setPage)
+	}, [getPage])
 
-    const context = this.canvas.getContext('2d');
-    this.canvas.width = width;
-    this.canvas.height = height;
 
-    page.render({
-      canvasContext: context,
-      viewport,
-    });
-  }
+	useEffect(() => {
+		if (!isVisible || !page)
+			return
 
-  render() {
-    return (
-      <PdfCanvas>
-        {this.props.disableVisibilityCheck ? <canvas ref={node => this.canvas = node} width="670" height="870" /> : (
-          <VisibilitySensor onChange={this.onChange} partialVisibility >
-            <canvas ref={node => this.canvas = node} width="670" height="870" />
-          </VisibilitySensor>
-            )
-        }
-      </PdfCanvas>
-    );
-  }
+		setLoading(true)
+
+		const calculatedScale = (containerWidth / page.getViewport({scale:DEFAULT_SCALE}).width);
+		const scale = Math.min(DEFAULT_SCALE, calculatedScale);
+		const viewport = page.getViewport({scale: scale + zoom})
+		canvasRef.current.width = viewport.width;
+		canvasRef.current.height = viewport.height;
+
+		page.render({
+			canvasContext: canvasRef.current.getContext('2d'),
+			viewport
+		}).promise.then( () => setLoading(false))
+
+		return () => page.cleanup()
+	}, [page, containerWidth, zoom, isVisible])
+
+	return (
+		<VisibilitySensor partialVisibility={true} onChange={setIsVisible}>
+			<PdfCanvas>
+				{loading ? <Loading style={{position:'absolute'}}/> : null}
+				<canvas ref={canvasRef} width={670} height={870}/>
+			</PdfCanvas>
+		</VisibilitySensor>
+	)
 }
 
-export default class PDFDriver extends React.Component {
-  constructor(props) {
-    super(props);
 
-    this.state = {
-      pdf: null,
-      zoom: 0,
-      percent: 0,
-    };
+function PdfDriver ({filePath, fileData, ...props}) {
 
-    this.increaseZoom = this.increaseZoom.bind(this);
-    this.reduceZoom = this.reduceZoom.bind(this);
-    this.resetZoom = this.resetZoom.bind(this);
-  }
+	const [loading, setLoading] = useState(true)
+	const [options, setOptions] = useState({})
+	const [error, setError] = useState(false)
+	const [pdf, setPdf] = useState()
+	const [offsetWidth, setOffsetWidth] = useState()
+	const [zoom, setZoom] = useState(0)
+	const containerRef = useRef()
 
-  componentDidMount() {
-    const { filePath } = this.props;
-    const containerWidth = this.container.offsetWidth;
-    PDFJS.getDocument(filePath, null, null, this.progressCallback.bind(this)).then((pdf) => {
-      this.setState({ pdf, containerWidth });
-    });
-  }
+	//listen for container.offsetWidth mutation
+	const resizeObserver = new ResizeObserver(entries => entries.forEach(entry => {
+		if(offsetWidth !== entry.target.offsetWidth)
+			setOffsetWidth(entry.target.offsetWidth)
+	}));
 
-  setZoom(zoom) {
-    this.setState({
-      zoom,
-    });
-  }
 
-  progressCallback(progress) {
-    const percent = ((progress.loaded / progress.total) * 100).toFixed();
-    this.setState({ percent });
-  }
+	useEffect(() => {
 
-  reduceZoom() {
-    if (this.state.zoom === 0) return;
-    this.setZoom(this.state.zoom - 1);
-  }
+		setLoading(true)
 
-  increaseZoom() {
-    this.setZoom(this.state.zoom + 1);
-  }
+		if (!!fileData){
+			const reader = new FileReader()
 
-  resetZoom() {
-    this.setZoom(0);
-  }
+			reader.addEventListener("loadend", e => setOptions({data: new Uint8Array(e.target.result)}) )
+			reader.addEventListener("error", e => {console.warn(e); setOptions({url: filePath})})
 
-  renderPages() {
-    const { pdf, containerWidth, zoom } = this.state;
-    if (!pdf) return null;
-    const pages = Array.apply(null, { length: pdf.numPages });
-    return pages.map((v, i) => (
-      (<PDFPage
-        index={i + 1}
-        pdf={pdf}
-        containerWidth={containerWidth}
-        zoom={zoom * INCREASE_PERCENTAGE}
-        disableVisibilityCheck={this.props.disableVisibilityCheck}
-      />)
-    ));
-  }
+			reader.readAsArrayBuffer(fileData)
+		}
+		else setOptions({url: filePath})
 
-  renderLoading() {
-    if (this.state.pdf) return null;
-//     return (<div className="pdf-loading">LOADING ({this.state.percent}%)</div>);
-    return <Loading/>
-  }
+	}, [fileData, filePath])
 
-  render() {
-    return (
-	<PdfViewer ref={node => this.container = node} >
-		<div className="pdf-controlls-container">
-			<div className="view-control" onClick={this.increaseZoom} >
-				<i className="zoom-in" />
+
+
+	useEffect(() => {
+		if (!options || typeof options !== "object" || !Object.keys(options).length)
+			return
+
+		try {
+			PDFJS.getDocument(options).promise.then(pdf => {
+				setPdf(pdf)
+				setLoading(false)
+				resizeObserver.observe(containerRef.current);
+			})
+		}
+		catch(err) {
+			console.warn(err)
+			setError("PDFJS : "+err.message)
+		}
+
+	}, [options])
+
+
+	if (error)
+		return <Error error={error}/>
+
+
+	const pageGetter = id => () => pdf.getPage(id+1)
+
+	return (
+		<PdfViewer ref={containerRef}>
+			<div className="pdf-controlls-container">
+				<div className="view-control" onClick={() => setZoom(z => z+INCREASE_PERCENTAGE)} >
+					<i className="zoom-in" >zoom in</i>
+				</div>
+				<div className="view-control" onClick={() => setZoom(0)}>
+					<i className="zoom-reset" >reset</i>
+				</div>
+				<div className="view-control" onClick={() => setZoom(z => z-INCREASE_PERCENTAGE)}>
+					<i className="zoom-out" >zoom out</i>
+				</div>
 			</div>
-			<div className="view-control" onClick={this.resetZoom}>
-				<i className="zoom-reset" />
-			</div>
-			<div className="view-control" onClick={this.reduceZoom}>
-				<i className="zoom-out" />
-			</div>
-		</div>
-		{this.renderLoading()}
-		{this.renderPages()}
-	</PdfViewer>
-    );
-  }
+			{ (loading || !pdf) ?
+				<Loading/> :
+				new Array(pdf.numPages).fill('').map((a, id) => <Page getPage={pageGetter(id)} key={id} containerWidth={offsetWidth} zoom={zoom}/> )
+			}
+		</PdfViewer>
+	)
+
 }
-//
 
-PDFDriver.defaultProps = {
-  disableVisibilityCheck: false,
-};
+export { Page }
+export default PdfDriver
 
 const PdfViewer = styled.div`
-	height:100%;
+	color:white;
+
+	.pdf-controlls-container {
+		display:flex;
+		justify-content:center;
+		margin-bottom:1vh;
+
+		position:sticky;
+
+		.view-control {
+			background-color:rgba(0,0,0,.9);
+			padding:.5vw 1vw;
+		}
+	}
 `
 
 const PdfCanvas = styled.div`
 	text-align:center;
-	
+	position:relative;
+
 	& canvas {
 		display:inline-block
 	}

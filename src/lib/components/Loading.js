@@ -32,7 +32,9 @@ const Loading = styled.span`
 	animation: ${rotate} 2s linear infinite;
 `
 
-export default (props) => 
+const LoadingComponent = (props) =>
 	<LoadingContainer {...props}>
 		<Loading/>
 	</LoadingContainer>
+
+export default LoadingComponent
