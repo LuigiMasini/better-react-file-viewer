@@ -1,7 +1,7 @@
 import React from 'react'
 
 // import Loading from '../Loading'
-import Error from '../error'
+import Error from '../Error'
 
 class OfficeViewer extends React.Component {
 	state={

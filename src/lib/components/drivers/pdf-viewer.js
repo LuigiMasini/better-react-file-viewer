@@ -6,7 +6,7 @@ import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.entry';
 import styled from 'styled-components'
 import VisibilitySensor from 'react-visibility-sensor'
 import Loading from '../Loading'
-import Error from '../error'
+import Error from '../Error'
 
 const DEFAULT_SCALE = 1.1
 const INCREASE_PERCENTAGE = 0.2;

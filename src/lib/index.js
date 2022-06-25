@@ -2,7 +2,7 @@ import React, {useState, useEffect} from 'react'
 import PropTypes from 'prop-types';
 
 import FileViewerControls from './components/FileViewerControls'
-import FileViewer from './components/file-viewer'
+import FileViewer from './components/FileViewer'
 import Loading from './components/Loading'
 
 function FileViewerContainer ({name, type, path, data, close, hideControls, ...props}){
@@ -15,8 +15,10 @@ function FileViewerContainer ({name, type, path, data, close, hideControls, ...p
 		if (!path && data){
 			var urlCreator = window.URL || window.webkitURL;
 			setFilePath(urlCreator.createObjectURL(data));
-			setLoading(l => [false, l[1]])
 		}
+		else setFilePath(path);
+
+		setLoading(l => [false, l[1]])
 	},[path, data])
 
 	useEffect(() => {

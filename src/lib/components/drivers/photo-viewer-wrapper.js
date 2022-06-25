@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import PhotoViewer from './photo-viewer';
 import Photo360Viewer from './photo360-viewer';
 import Loading from '../Loading';
-import Error from '../error'
+import Error from '../Error'
 
 function getPhotoDriver(width, height, fileType) {
 	if (fileType === 'jpg' && window.Math.abs((width / height) - 2) <= 0.01) {

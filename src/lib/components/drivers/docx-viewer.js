@@ -5,7 +5,7 @@ import mammoth from 'mammoth/mammoth.browser.min.js';
 
 import Styles from '../../styles/docx';
 import Loading from '../Loading';
-import Error from '../error'
+import Error from '../Error'
 
 export default class extends Component {
 	state = {

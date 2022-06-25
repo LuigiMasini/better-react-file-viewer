@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 
-import Error from './error';
+import Error from './Error';
 import Loading from './Loading';
 
 function provideData (WrappedComponent, props) {

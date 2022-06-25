@@ -1,18 +1,48 @@
 .App {
-	height:100%;
-	text-align: center;
 	display:flex;
-	justify-content:center;
-	align-items:center;
-	background:midnightblue;
+	flex-direction:column;
+	height:100%;
+}
+
+.files {
+	display:flex;
+	gap:10px;
+	padding:10px;
+}
+
+.file {
+	line-height:28px;
+	padding:5px 10px;
+	border:solid darkgrey 2px;
+	border-radius:10px;
+}
+
+.remove {
+	font-size:20px;
+	margin-left:10px;
+	font-weight:bold;
+	color:red;
+	cursor:pointer;
+}
+
+input {
+	opacity:0;
+	position:absolute;
+	top:0;
+	left:0;
+	right:0;
+	bottom:0;
+	width:100%;
+	height:100%;
 }
 
 .input {
-	width:min(60vh, 90vw);
-	height:min(60vh, 90vw);
-	border-radius:min(5vh, 10vw);
-	padding:min(5vh, 7vw);
-	box-sizing:border-box;
-	border:solid white 2px;
-	background:darkslateblue;
+	position:relative;
+	border:dashed darkgrey 2px;
+	border-radius:30px;
+	flex-grow:2;
+	margin:20px;
+	display:flex;
+	justify-content:center;
+	align-items:center;
 }
